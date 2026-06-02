@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHITE BRONCO // EMISSION_NODE</title>
+    <title>WHITE BRONCO // EMISSION</title>
     <style>
         body {
             background-color: #000000;
@@ -17,15 +17,17 @@
             margin: 0;
             overflow: hidden;
         }
-        canvas {
+        video {
             position: absolute;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
+            object-fit: cover;
             z-index: 1;
-            opacity: 0.85;
+            mix-blend-mode: lighten;
             pointer-events: none;
+            transition: filter 0.05s ease;
         }
         #gate {
             position: relative;
@@ -50,12 +52,12 @@
             font-size: 11px;
             letter-spacing: 3px;
             color: #ffffff;
-            text-shadow: 0 0 5px #000000;
+            text-shadow: 0 0 8px #000000;
             text-align: center;
             line-height: 2;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.75);
             padding: 20px;
-            border-radius: 4px;
+            border: 1px solid #222222;
         }
         .highlight {
             color: #ff3333;
@@ -71,7 +73,7 @@
         <div id="telemetry">OFFSET: 0.00s | RATE: 1.00x</div>
     </div>
 
-    <canvas id="visual-node"></canvas>
+    <video id="bg-video" src="./background.mp4" loop muted playsinline></video>
 
     <script>
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -83,72 +85,31 @@
         const mainframe = document.getElementById('mainframe');
         const statusDiv = document.getElementById('status');
         const telemetryDiv = document.getElementById('telemetry');
-        
-        // Canvas Setup (Fixed for mobile rendering stability)
-        const canvas = document.getElementById('visual-node');
-        const ctx2d = canvas.getContext('2d');
+        const video = document.getElementById('bg-video');
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        // 1. Fetch and Decode Audio
+        // 1. Load Audio Archive
         async function loadSignal() {
             try {
                 const response = await fetch('./white_bronco.mp3');
-                if (!response.ok) throw new Error("404_NOT_FOUND");
+                if (!response.ok) throw new Error("AUDIO_404");
                 
                 const arrayBuffer = await response.arrayBuffer();
                 statusDiv.innerText = "DECODING_ARCHIVE_DATA...";
                 mainBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 
                 statusDiv.innerHTML = "SYSTEM_ONLINE // <span class='highlight'>MUTATING</span>";
+                
+                // Wake up video asset
+                video.play();
                 isRunning = true;
                 emitGrain();
             } catch (err) {
-                statusDiv.innerHTML = "ERR: FILE_NOT_FOUND.<br>ENSURE 'white_bronco.mp3' IS CURRENTLY IN THE ROOT LEVEL.";
+                statusDiv.innerHTML = "ERR: ARCHIVE FAILED. CHECK FILE PLACEMENT.";
                 console.error(err);
             }
         }
 
-        // 2. The Visual Generator
-        function triggerVisualGlitch(rate, offset, length) {
-            ctx2d.fillStyle = `rgba(0, 0, 0, 0.25)`;
-            ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-
-            const baseBrightness = Math.floor((offset % 1) * 80); 
-            const numElements = Math.floor(length * 8);
-            
-            for (let i = 0; i < numElements; i++) {
-                let colorSeed = Math.random();
-                if (colorSeed > 0.85 && rate !== 1.0) {
-                    ctx2d.fillStyle = `rgba(255, 51, 51, ${Math.random() * 0.4})`; 
-                } else {
-                    let brightness = baseBrightness + Math.floor(Math.random() * 155);
-                    ctx2d.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${Math.random() * 0.7})`;
-                }
-
-                const w = Math.random() * (canvas.width * 0.6);
-                const h = Math.random() * (canvas.height * 0.1) * (1 / rate);
-                const x = Math.random() * (canvas.width - w);
-                const y = Math.random() * (canvas.height - h);
-
-                ctx2d.fillRect(x, y, w, h);
-            }
-
-            for (let i = 0; i < 2000; i++) {
-                const x = Math.floor(Math.random() * canvas.width);
-                const y = Math.floor(Math.random() * canvas.height);
-                const noise = Math.floor(Math.random() * 255);
-                ctx2d.fillStyle = `rgba(${noise}, ${noise}, ${noise}, 0.15)`;
-                ctx2d.fillRect(x, y, 1, 1);
-            }
-        }
-
-        // 3. The Audio-Visual Co-Engine
+        // 2. The Integrated Deconstructor Loop
         function emitGrain() {
             if (!isRunning || !mainBuffer) return;
 
@@ -157,26 +118,52 @@
 
             const duration = mainBuffer.duration;
             const randomOffset = Math.random() * (duration - 2); 
-            const sliceLength = 0.4 + (Math.random() * 1.4);
+            const sliceLength = 0.3 + (Math.random() * 1.2); // Faster, tighter chops
             
-            const rates = [0.5, 0.8, 1.0, 1.0, 1.2];
+            const rates = [0.4, 0.7, 1.0, 1.0, 1.0, 1.3]; // Heavy speed deviations
             const randomRate = rates[Math.floor(Math.random() * rates.length)];
 
             source.playbackRate.value = randomRate;
             source.connect(audioCtx.destination);
             source.start(0, randomOffset, sliceLength);
 
-            triggerVisualGlitch(randomRate, randomOffset, sliceLength);
+            // --- VIDEO MUTATION LOGIC ---
+            
+            // Sync the video speed directly to the audio slice pitch
+            video.playbackRate = randomRate;
+            
+            // 40% chance to violently break the video tracking and jump to a new timeline frame
+            if (Math.random() > 0.6) {
+                video.currentTime = Math.random() * video.duration;
+            }
 
+            // High-contrast exposure flashes mapped to audio triggers
+            if (Math.random() > 0.75) {
+                // Harsh Chiaroscuro Over-exposure Flash
+                video.style.filter = `brightness(250%) contrast(300%) grayscale(100%)`;
+            } else if (Math.random() > 0.92) {
+                // Total Negative Inversion Glitch
+                video.style.filter = `invert(100%) contrast(200%)`;
+            } else {
+                video.style.filter = `none`;
+            }
+
+            // Instantly clear the visual glitch right before the next chop hit
+            setTimeout(() => {
+                video.style.filter = "none";
+            }, 50);
+
+            // Update System Telemetry
             telemetryDiv.innerText = `OFFSET: ${randomOffset.toFixed(2)}s | RATE: ${randomRate.toFixed(2)}x | LEN: ${sliceLength.toFixed(2)}s`;
 
+            // Calculate timing interval
             const nextTrigger = (sliceLength / randomRate) * 1000;
-            const delay = Math.random() > 0.85 ? nextTrigger * 0.3 : nextTrigger;
+            const delay = Math.random() > 0.85 ? nextTrigger * 0.25 : nextTrigger;
 
             setTimeout(emitGrain, delay);
         }
 
-        // 4. Ignition
+        // 3. System Ignition
         gate.addEventListener('click', () => {
             gate.style.display = 'none';
             mainframe.style.display = 'block';
