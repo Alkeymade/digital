@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHITE BRONCO</title>
+    <title>WHITE BRONCO // DECONSTRUCTED</title>
     <style>
         body {
             background-color: #000000;
             color: #ffffff;
             font-family: monospace;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -19,40 +20,120 @@
         #gate {
             cursor: pointer;
             font-size: 13px;
-            letter-spacing: 4px;
-            transition: opacity 0.5s ease;
+            letter-spacing: 5px;
+            border: 1px solid #ffffff;
+            padding: 15px 25px;
+            background: transparent;
+            color: #ffffff;
+            transition: all 0.3s ease;
         }
         #gate:hover {
-            color: #888888;
+            background: #ffffff;
+            color: #000000;
         }
-        #status {
+        #mainframe {
             display: none;
             font-size: 11px;
-            letter-spacing: 2px;
-            color: #444444;
+            letter-spacing: 3px;
+            color: #888888;
+            text-align: center;
+            line-height: 2;
+        }
+        .highlight {
+            color: #ff3333; /* Crimson alert indicator */
         }
     </style>
 </head>
 <body>
 
-    <div id="gate">[ TRANSMISSION_01 ]</div>
-    <div id="status">SIGNAL_ACTIVE</div>
-
-    <audio id="audio-player" src="white_bronco.mp3" loop></audio>
+    <button id="gate">[ DECONSTRUCT_BRONCO ]</button>
+    
+    <div id="mainframe">
+        <div id="status">EXTRACTING_SIGNAL...</div>
+        <div id="telemetry">OFFSET: 0.00s | RATE: 1.00x</div>
+    </div>
 
     <script>
-        const gate = document.getElementById('gate');
-        const status = document.getElementById('status');
-        const player = document.getElementById('player');
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let mainBuffer = null;
+        let isRunning = false;
 
+        const gate = document.getElementById('gate');
+        const mainframe = document.getElementById('mainframe');
+        const statusDiv = document.getElementById('status');
+        const telemetryDiv = document.getElementById('telemetry');
+
+        // 1. Fetch and Decode the Single MP3 File
+        async function loadSignal() {
+            try {
+                const response = await fetch('./white_bronco.mp3');
+                if (!response.ok) throw new Error("404_NOT_FOUND");
+                
+                const arrayBuffer = await response.arrayBuffer();
+                statusDiv.innerText = "DECODING_ARCHIVE_DATA...";
+                mainBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                
+                statusDiv.innerHTML = "SYSTEM_ONLINE // <span class='highlight'>MUTATING</span>";
+                beginEmission();
+            } catch (err) {
+                statusDiv.innerHTML = "ERR: FILE_NOT_FOUND.<br>ENSURE 'white_bronco.mp3' IS IN THE ROOT LEVEL.";
+                console.error(err);
+            }
+        }
+
+        // 2. The Granular Engine (The Deconstructor)
+        function emitGrain() {
+            if (!isRunning || !mainBuffer) return;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = mainBuffer;
+
+            // Define the behavior of the chop
+            const duration = mainBuffer.duration;
+            
+            // Pick a completely random starting point in the song
+            const randomOffset = Math.random() * (duration - 2); 
+            
+            // Determine how long the slice plays (between 0.4 and 1.8 seconds)
+            const sliceLength = 0.4 + (Math.random() * 1.4);
+            
+            // Randomly alter playback speed (Normal, Half-speed, or Slightly Draggings)
+            const rates = [0.5, 0.8, 1.0, 1.0, 1.2];
+            const randomRate = rates[Math.floor(Math.random() * rates.length)];
+
+            source.playbackRate.value = randomRate;
+            
+            // Route to speakers
+            source.connect(audioCtx.destination);
+            
+            // Play just that tiny slice
+            source.start(0, randomOffset, sliceLength);
+
+            // Update UI Telemetry
+            telemetryDiv.innerText = `OFFSET: ${randomOffset.toFixed(2)}s | RATE: ${randomRate.toFixed(2)}x | LEN: ${sliceLength.toFixed(2)}s`;
+
+            // Calculate when to drop the next chop based on how long this one plays
+            const nextTrigger = (sliceLength / randomRate) * 1000;
+            
+            // Stutter effect adjustment: 15% chance to cut the next note early
+            const delay = Math.random() > 0.85 ? nextTrigger * 0.3 : nextTrigger;
+
+            setTimeout(emitGrain, delay);
+        }
+
+        function beginEmission() {
+            isRunning = true;
+            emitGrain();
+        }
+
+        // 3. Ignition Trigger
         gate.addEventListener('click', () => {
             gate.style.display = 'none';
-            status.style.display = 'block';
+            mainframe.style.display = 'block';
             
-            player.play().catch(error => {
-                status.innerText = "LINK_BROKEN";
-                console.error("Audio failed to play:", error);
-            });
+            audioCtx = new AudioContext();
+            loadSignal();
         });
     </script>
 </body>
