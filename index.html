@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHITE BRONCO // DECONSTRUCTED</title>
+    <title>WHITE BRONCO // EMISSION_NODE</title>
     <style>
         body {
             background-color: #000000;
@@ -17,13 +17,25 @@
             margin: 0;
             overflow: hidden;
         }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            opacity: 0.85;
+            pointer-events: none;
+        }
         #gate {
+            position: relative;
+            z-index: 10;
             cursor: pointer;
             font-size: 13px;
             letter-spacing: 5px;
             border: 1px solid #ffffff;
             padding: 15px 25px;
-            background: transparent;
+            background: #000000;
             color: #ffffff;
             transition: all 0.3s ease;
         }
@@ -33,14 +45,20 @@
         }
         #mainframe {
             display: none;
+            position: relative;
+            z-index: 10;
             font-size: 11px;
             letter-spacing: 3px;
-            color: #888888;
+            color: #ffffff;
+            text-shadow: 0 0 5px #000000; /* Protect readability over flashes */
             text-align: center;
             line-height: 2;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 4px;
         }
         .highlight {
-            color: #ff3333; /* Crimson alert indicator */
+            color: #ff3333;
         }
     </style>
 </head>
@@ -53,6 +71,8 @@
         <div id="telemetry">OFFSET: 0.00s | RATE: 1.00x</div>
     </div>
 
+    <canvas id="visual-node"></canvas>
+
     <script>
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
@@ -63,8 +83,19 @@
         const mainframe = document.getElementById('mainframe');
         const statusDiv = document.getElementById('status');
         const telemetryDiv = document.getElementById('telemetry');
+        
+        // Canvas Setup
+        const canvas = document.getElementById('visual-node');
+        const gl = canvas.getContext('2d');
 
-        // 1. Fetch and Decode the Single MP3 File
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 1. Fetch and Decode Audio
         async function loadSignal() {
             try {
                 const response = await fetch('./white_bronco.mp3');
@@ -75,59 +106,84 @@
                 mainBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 
                 statusDiv.innerHTML = "SYSTEM_ONLINE // <span class='highlight'>MUTATING</span>";
-                beginEmission();
+                isRunning = true;
+                emitGrain();
             } catch (err) {
-                statusDiv.innerHTML = "ERR: FILE_NOT_FOUND.<br>ENSURE 'white_bronco.mp3' IS IN THE ROOT LEVEL.";
+                statusDiv.innerHTML = "ERR: FILE_NOT_FOUND.<br>ENSURE 'white_bronco.mp3' IS CURRENTLY IN THE ROOT LEVEL.";
                 console.error(err);
             }
         }
 
-        // 2. The Granular Engine (The Deconstructor)
+        // 2. The Visual Generator
+        function triggerVisualGlitch(rate, offset, length) {
+            // Clear screen with a slight trailing alpha for a ghosting/film-grain effect
+            gl.fillStyle = `rgba(0, 0, 0, 0.25)`;
+            gl.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Chiaroscuro procedural parameters based heavily on the current audio grain
+            const baseBrightness = Math.floor((offset % 1) * 80); // Abstract shadow depth
+            
+            // Draw harsh, minimalist blocks or lines based on audio playback rate
+            const numElements = Math.floor(length * 8);
+            for (let i = 0; i < numElements; i++) {
+                // Determine if flash is white, grey, or dark crimson
+                let colorSeed = Math.random();
+                if (colorSeed > 0.85 && rate !== 1.0) {
+                    gl.fillStyle = `rgba(255, 51, 51, ${Math.random() * 0.4})`; // Anomalous alert red
+                } else {
+                    let brightness = baseBrightness + Math.floor(Math.random() * 155);
+                    gl.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${Math.random() * 0.7})`;
+                }
+
+                // Generative layout mapped to audio mechanics
+                const w = Math.random() * (canvas.width * 0.6);
+                const h = Math.random() * (canvas.height * 0.1) * (1 / rate);
+                const x = Math.random() * (canvas.width - w);
+                const y = Math.random() * (canvas.height - h);
+
+                gl.fillRect(x, y, w, h);
+            }
+
+            // Procedural digital static overlay
+            for (let i = 0; i < 2000; i++) {
+                const x = Math.floor(Math.random() * canvas.width);
+                const y = Math.floor(Math.random() * canvas.height);
+                const noise = Math.floor(Math.random() * 255);
+                gl.fillStyle = `rgba(${noise}, ${noise}, ${noise}, 0.15)`;
+                gl.fillRect(x, y, 1, 1);
+            }
+        }
+
+        // 3. The Audio-Visual Co-Engine
         function emitGrain() {
             if (!isRunning || !mainBuffer) return;
 
             const source = audioCtx.createBufferSource();
             source.buffer = mainBuffer;
 
-            // Define the behavior of the chop
             const duration = mainBuffer.duration;
-            
-            // Pick a completely random starting point in the song
             const randomOffset = Math.random() * (duration - 2); 
-            
-            // Determine how long the slice plays (between 0.4 and 1.8 seconds)
             const sliceLength = 0.4 + (Math.random() * 1.4);
             
-            // Randomly alter playback speed (Normal, Half-speed, or Slightly Draggings)
             const rates = [0.5, 0.8, 1.0, 1.0, 1.2];
             const randomRate = rates[Math.floor(Math.random() * rates.length)];
 
             source.playbackRate.value = randomRate;
-            
-            // Route to speakers
             source.connect(audioCtx.destination);
-            
-            // Play just that tiny slice
             source.start(0, randomOffset, sliceLength);
 
-            // Update UI Telemetry
+            // Directly couple the visual mutation to this specific audio event
+            triggerVisualGlitch(randomRate, randomOffset, sliceLength);
+
             telemetryDiv.innerText = `OFFSET: ${randomOffset.toFixed(2)}s | RATE: ${randomRate.toFixed(2)}x | LEN: ${sliceLength.toFixed(2)}s`;
 
-            // Calculate when to drop the next chop based on how long this one plays
             const nextTrigger = (sliceLength / randomRate) * 1000;
-            
-            // Stutter effect adjustment: 15% chance to cut the next note early
             const delay = Math.random() > 0.85 ? nextTrigger * 0.3 : nextTrigger;
 
             setTimeout(emitGrain, delay);
         }
 
-        function beginEmission() {
-            isRunning = true;
-            emitGrain();
-        }
-
-        // 3. Ignition Trigger
+        // 4. Ignition
         gate.addEventListener('click', () => {
             gate.style.display = 'none';
             mainframe.style.display = 'block';
