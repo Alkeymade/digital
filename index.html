@@ -25,9 +25,9 @@
             height: 100vh;
             object-fit: cover;
             z-index: 1;
-            mix-blend-mode: lighten;
             pointer-events: none;
             transition: filter 0.05s ease;
+            /* Removed mix-blend-mode to prevent dark tones from vanishing */
         }
         #gate {
             position: relative;
@@ -99,8 +99,6 @@
                 
                 statusDiv.innerHTML = "SYSTEM_ONLINE // <span class='highlight'>MUTATING</span>";
                 
-                // Wake up video asset
-                video.play();
                 isRunning = true;
                 emitGrain();
             } catch (err) {
@@ -118,9 +116,9 @@
 
             const duration = mainBuffer.duration;
             const randomOffset = Math.random() * (duration - 2); 
-            const sliceLength = 0.3 + (Math.random() * 1.2); // Faster, tighter chops
+            const sliceLength = 0.3 + (Math.random() * 1.2); 
             
-            const rates = [0.4, 0.7, 1.0, 1.0, 1.0, 1.3]; // Heavy speed deviations
+            const rates = [0.4, 0.7, 1.0, 1.0, 1.0, 1.3]; 
             const randomRate = rates[Math.floor(Math.random() * rates.length)];
 
             source.playbackRate.value = randomRate;
@@ -128,35 +126,26 @@
             source.start(0, randomOffset, sliceLength);
 
             // --- VIDEO MUTATION LOGIC ---
-            
-            // Sync the video speed directly to the audio slice pitch
             video.playbackRate = randomRate;
             
-            // 40% chance to violently break the video tracking and jump to a new timeline frame
             if (Math.random() > 0.6) {
                 video.currentTime = Math.random() * video.duration;
             }
 
-            // High-contrast exposure flashes mapped to audio triggers
             if (Math.random() > 0.75) {
-                // Harsh Chiaroscuro Over-exposure Flash
                 video.style.filter = `brightness(250%) contrast(300%) grayscale(100%)`;
             } else if (Math.random() > 0.92) {
-                // Total Negative Inversion Glitch
                 video.style.filter = `invert(100%) contrast(200%)`;
             } else {
                 video.style.filter = `none`;
             }
 
-            // Instantly clear the visual glitch right before the next chop hit
             setTimeout(() => {
                 video.style.filter = "none";
             }, 50);
 
-            // Update System Telemetry
             telemetryDiv.innerText = `OFFSET: ${randomOffset.toFixed(2)}s | RATE: ${randomRate.toFixed(2)}x | LEN: ${sliceLength.toFixed(2)}s`;
 
-            // Calculate timing interval
             const nextTrigger = (sliceLength / randomRate) * 1000;
             const delay = Math.random() > 0.85 ? nextTrigger * 0.25 : nextTrigger;
 
@@ -167,6 +156,9 @@
         gate.addEventListener('click', () => {
             gate.style.display = 'none';
             mainframe.style.display = 'block';
+            
+            // FIX: Fire the video immediately on click so iOS doesn't block it
+            video.play().catch(err => console.log("Video click playback intercepted:", err));
             
             audioCtx = new AudioContext();
             loadSignal();
