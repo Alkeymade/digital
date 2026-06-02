@@ -50,7 +50,7 @@
             font-size: 11px;
             letter-spacing: 3px;
             color: #ffffff;
-            text-shadow: 0 0 5px #000000; /* Protect readability over flashes */
+            text-shadow: 0 0 5px #000000;
             text-align: center;
             line-height: 2;
             background: rgba(0, 0, 0, 0.6);
@@ -84,9 +84,9 @@
         const statusDiv = document.getElementById('status');
         const telemetryDiv = document.getElementById('telemetry');
         
-        // Canvas Setup
+        // Canvas Setup (Fixed for mobile rendering stability)
         const canvas = document.getElementById('visual-node');
-        const gl = canvas.getContext('2d');
+        const ctx2d = canvas.getContext('2d');
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -116,41 +116,35 @@
 
         // 2. The Visual Generator
         function triggerVisualGlitch(rate, offset, length) {
-            // Clear screen with a slight trailing alpha for a ghosting/film-grain effect
-            gl.fillStyle = `rgba(0, 0, 0, 0.25)`;
-            gl.fillRect(0, 0, canvas.width, canvas.height);
+            ctx2d.fillStyle = `rgba(0, 0, 0, 0.25)`;
+            ctx2d.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Chiaroscuro procedural parameters based heavily on the current audio grain
-            const baseBrightness = Math.floor((offset % 1) * 80); // Abstract shadow depth
-            
-            // Draw harsh, minimalist blocks or lines based on audio playback rate
+            const baseBrightness = Math.floor((offset % 1) * 80); 
             const numElements = Math.floor(length * 8);
+            
             for (let i = 0; i < numElements; i++) {
-                // Determine if flash is white, grey, or dark crimson
                 let colorSeed = Math.random();
                 if (colorSeed > 0.85 && rate !== 1.0) {
-                    gl.fillStyle = `rgba(255, 51, 51, ${Math.random() * 0.4})`; // Anomalous alert red
+                    ctx2d.fillStyle = `rgba(255, 51, 51, ${Math.random() * 0.4})`; 
                 } else {
                     let brightness = baseBrightness + Math.floor(Math.random() * 155);
-                    gl.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${Math.random() * 0.7})`;
+                    ctx2d.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${Math.random() * 0.7})`;
                 }
 
-                // Generative layout mapped to audio mechanics
                 const w = Math.random() * (canvas.width * 0.6);
                 const h = Math.random() * (canvas.height * 0.1) * (1 / rate);
                 const x = Math.random() * (canvas.width - w);
                 const y = Math.random() * (canvas.height - h);
 
-                gl.fillRect(x, y, w, h);
+                ctx2d.fillRect(x, y, w, h);
             }
 
-            // Procedural digital static overlay
             for (let i = 0; i < 2000; i++) {
                 const x = Math.floor(Math.random() * canvas.width);
                 const y = Math.floor(Math.random() * canvas.height);
                 const noise = Math.floor(Math.random() * 255);
-                gl.fillStyle = `rgba(${noise}, ${noise}, ${noise}, 0.15)`;
-                gl.fillRect(x, y, 1, 1);
+                ctx2d.fillStyle = `rgba(${noise}, ${noise}, ${noise}, 0.15)`;
+                ctx2d.fillRect(x, y, 1, 1);
             }
         }
 
@@ -172,7 +166,6 @@
             source.connect(audioCtx.destination);
             source.start(0, randomOffset, sliceLength);
 
-            // Directly couple the visual mutation to this specific audio event
             triggerVisualGlitch(randomRate, randomOffset, sliceLength);
 
             telemetryDiv.innerText = `OFFSET: ${randomOffset.toFixed(2)}s | RATE: ${randomRate.toFixed(2)}x | LEN: ${sliceLength.toFixed(2)}s`;
