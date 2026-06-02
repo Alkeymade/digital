@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMINAL_00</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #33ff33; /* Harsh terminal green */
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #ignition {
+            cursor: pointer;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+        #log {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ignition">[ INITIATE_SYSTEM ]</div>
+    <div id="log"></div>
+
+    <script>
+        // 1. System Variables
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let ctx;
+        let buffers = {};
+        let isRunning = false;
+        
+        // Define your Whitebronco stems here
+        const stemFiles = {
+            kick: 'audio/kick.wav',
+            bass: 'audio/bass.wav',
+            chords: 'audio/chords.wav',
+            vox: 'audio/vox_chop.wav'
+        };
+
+        const tempo = 88; // BPM
+        const lookahead = 25.0; // ms
+        const scheduleAheadTime = 0.1; // s
+        let currentNote = 0;
+        let nextNoteTime = 0.0;
+
+        // 2. Load Audio Buffers
+        async function loadAudio() {
+            logMsg("> FETCHING ARCHIVE_DATA...");
+            for (const [name, url] of Object.entries(stemFiles)) {
+                try {
+                    const response = await fetch(url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    buffers[name] = await ctx.decodeAudioData(arrayBuffer);
+                    logMsg(`> ${name.toUpperCase()} LOADED.`);
+                } catch (e) {
+                    logMsg(`> ERR: FAILED TO LOAD ${name}`);
+                }
+            }
+            logMsg("> SYSTEM READY. AUTONOMOUS SEQUENCE INITIATED.");
+        }
+
+        // 3. The Playback Engine
+        function playStem(buffer, time, rate = 1.0, volume = 1.0) {
+            if (!buffer) return;
+            const source = ctx.createBufferSource();
+            const gainNode = ctx.createGain();
+            
+            source.buffer = buffer;
+            source.playbackRate.value = rate;
+            gainNode.gain.value = volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            source.start(time);
+        }
+
+        // 4. Autonomous Logic (The Anti-Algorithm)
+        function scheduleNote(beatNumber, time) {
+            // Kick plays securely on the 1 and 3
+            if (beatNumber % 4 === 0 || beatNumber % 4 === 2) {
+                playStem(buffers.kick, time);
+            }
+            
+            // Bass has an 80% chance to play, occasionally pitched down
+            if (Math.random() > 0.2) {
+                const pitch = Math.random() > 0.9 ? 0.8 : 1.0; // 10% chance to drag
+                playStem(buffers.bass, time, pitch, 0.8);
+            }
+
+            // Chords trigger on the 1, but sometimes reverse or stutter (simulated by pitch)
+            if (beatNumber % 8 === 0) {
+                playStem(buffers.chords, time, 1.0, 0.6);
+            }
+
+            // Vox chops are completely erratic (30% probability on off-beats)
+            if (beatNumber % 2 !== 0 && Math.random() > 0.7) {
+                playStem(buffers.vox, time, 1.0, 0.9);
+                logMsg("> VOX_ANOMALY DETECTED.");
+            }
+        }
+
+        // 5. The Look-Ahead Scheduler (Prevents timing glitches)
+        function nextNote() {
+            const secondsPerBeat = 60.0 / tempo;
+            nextNoteTime += secondsPerBeat * 0.5; // 8th note resolution
+            currentNote++;
+            if (currentNote === 16) currentNote = 0;
+        }
+
+        function scheduler() {
+            while (nextNoteTime < ctx.currentTime + scheduleAheadTime) {
+                scheduleNote(currentNote, nextNoteTime);
+                nextNote();
+            }
+            if (isRunning) {
+                setTimeout(scheduler, lookahead);
+            }
+        }
+
+        // 6. UI & Ignition
+        function logMsg(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerText += msg + '\n';
+            // Keep terminal from overflowing infinitely
+            if (logDiv.innerText.split('\n').length > 15) {
+                logDiv.innerText = logDiv.innerText.substring(logDiv.innerText.indexOf('\n') + 1);
+            }
+        }
+
+        document.getElementById('ignition').addEventListener('click', async () => {
+            if (isRunning) return;
+            document.getElementById('ignition').style.display = 'none';
+            document.getElementById('log').style.display = 'block';
+            
+            ctx = new AudioContext();
+            await loadAudio();
+            
+            isRunning = true;
+            nextNoteTime = ctx.currentTime + 0.1;
+            scheduler();
+        });
+    </script>
+</body>
+</html>
